@@ -28,6 +28,8 @@ def get_uv_path():
         "uv",  # In PATH
         os.path.expanduser("~/.local/bin/uv"),  # Linux/Mac default
         os.path.expanduser("~/.cargo/bin/uv"),  # Alternative location
+        os.path.expanduser("~\\AppData\\Roaming\\uv\\uv.exe"),  # Windows default
+        os.path.expanduser("~\\.cargo\\bin\\uv.exe"),  # Windows cargo
     ]
     
     for path in possible_paths:
@@ -49,8 +51,14 @@ def main():
     
     if uv_cmd is None:
         print("uv not found. Installing uv...")
-        install_script = "curl -LsSf https://astral.sh/uv/install.sh | sh"
-        result = subprocess.run(install_script, shell=True, capture_output=True, text=True)
+        
+        # Platform-specific installation
+        if sys.platform == "win32":
+            install_cmd = 'powershell -c "irm https://astral.sh/uv/install.ps1 | iex"'
+        else:
+            install_cmd = "curl -LsSf https://astral.sh/uv/install.sh | sh"
+        
+        result = subprocess.run(install_cmd, shell=True, capture_output=True, text=True)
         
         # Try to find uv again after installation
         uv_cmd = get_uv_path()
@@ -58,11 +66,18 @@ def main():
         if uv_cmd is None:
             print("\n⚠️  uv installation had issues. Falling back to pip + venv...")
             # Fallback to standard Python approach
-            if not run_command("python3 -m venv .venv", "Creating virtual environment"):
+            python_cmd = "python" if sys.platform == "win32" else "python3"
+            if not run_command(f"{python_cmd} -m venv .venv", "Creating virtual environment"):
                 return False
-            if not run_command(".venv/bin/pip install -e .", "Installing dependencies"):
+            
+            # Determine pip path
+            if sys.platform == "win32":
+                pip_path = os.path.join(".venv", "Scripts", "pip.exe")
+            else:
+                pip_path = os.path.join(".venv", "bin", "pip")
+            
+            if not run_command(f"{pip_path} install -e .", "Installing dependencies"):
                 return False
-            venv_python = ".venv/bin/python"
         else:
             print(f"✓ Found uv at: {uv_cmd}")
             # Create virtual environment
@@ -71,7 +86,6 @@ def main():
             # Install dependencies
             if not run_command(f"{uv_cmd} pip install -e .", "Installing dependencies"):
                 return False
-            venv_python = ".venv/bin/python"
     else:
         print(f"✓ Found uv at: {uv_cmd}")
         # Create virtual environment
@@ -80,20 +94,47 @@ def main():
         # Install dependencies
         if not run_command(f"{uv_cmd} pip install -e .", "Installing dependencies"):
             return False
-        venv_python = ".venv/bin/python"
     
-    # Setup Jupyter kernel
-    venv_python = ".venv/bin/python" if os.path.exists(".venv/bin/python") else ".venv/Scripts/python.exe"
-    if not run_command(f"{venv_python} -m ipykernel install --user --name=stock-eda", 
+    # Setup Jupyter kernel - determine correct Python path
+    if sys.platform == "win32":
+        venv_python = os.path.join(".venv", "Scripts", "python.exe")
+    else:
+        venv_python = os.path.join(".venv", "bin", "python")
+    
+    if not os.path.exists(venv_python):
+        print(f"Warning: Could not find Python at {venv_python}")
+        return False
+    
+    if not run_command(f'"{venv_python}" -m ipykernel install --user --name=stock-eda', 
                       "Setting up Jupyter kernel"):
         return False
+    
+    # Enable Jupyter widgets (for classic Jupyter Notebook, not needed for VS Code)
+    print("\n" + "="*60)
+    print("Configuring Jupyter widgets")
+    print("="*60)
+    try:
+        # This enables widgets in classic Jupyter Notebook
+        result = subprocess.run(
+            f'"{venv_python}" -m jupyter nbextension enable --py widgetsnbextension --sys-prefix',
+            shell=True, capture_output=True, text=True
+        )
+        if result.returncode == 0:
+            print("✓ Jupyter widgets configured for classic Jupyter Notebook")
+        else:
+            print("ℹ️  Jupyter widgets auto-configuration skipped (VS Code users don't need this)")
+    except Exception as e:
+        print("ℹ️  Widget configuration skipped (not required for VS Code)")
     
     print("\n" + "="*60)
     print("Setup completed successfully!")
     print("="*60)
     print("\nTo activate the environment:")
-    print("  source .venv/bin/activate  (Linux/Mac)")
-    print("  .venv\\Scripts\\activate     (Windows)")
+    if sys.platform == "win32":
+        print("  .venv\\Scripts\\activate     (PowerShell)")
+        print("  .venv\\Scripts\\activate.bat (Command Prompt)")
+    else:
+        print("  source .venv/bin/activate")
     print("\nTo start Jupyter:")
     print("  jupyter notebook")
     print("\nOpen 'stock_analysis.ipynb' and select 'stock-eda' kernel")
