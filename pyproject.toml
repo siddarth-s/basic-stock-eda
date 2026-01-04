@@ -11,7 +11,12 @@ dependencies = [
     "ipywidgets>=8.1.0",
     "ipykernel>=6.25.0",
     "jupyter>=1.0.0",
+    "pytest>=7.4.0",
+    "pytest-cov>=4.1.0",
 ]
+
+[project.optional-dependencies]
+dev = []
 
 [build-system]
 requires = ["hatchling"]

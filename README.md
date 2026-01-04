@@ -34,10 +34,21 @@ stock-eda/
 │   ├── base.py         # Base strategy class
 │   ├── dca_friday.py   # DCA every Friday
 │   ├── buy_once.py     # Lump sum investment
-│   └── intraday.py     # Buy 4pm, sell 9am
+│   ├── intraday.py     # Buy 4pm, sell 9am
+│   ├── intraday_hold_profit.py  # Intraday, only sell when profitable
+│   └── earnings_play.py # Earnings-based trading
+├── tests/              # Unit tests
+│   ├── conftest.py     # Test fixtures
+│   ├── test_base.py
+│   ├── test_buy_once.py
+│   ├── test_dca_friday.py
+│   ├── test_intraday.py
+│   ├── test_intraday_hold_profit.py
+│   └── test_earnings_play.py
 ├── stock_analysis.ipynb # Main notebook with UI
 ├── setup.py            # Environment setup script
 ├── pyproject.toml      # Dependencies
+├── pytest.ini          # Pytest configuration
 └── README.md
 ```
 
@@ -87,3 +98,28 @@ Register in `strategies/__init__.py` and the notebook will automatically detect 
 - matplotlib: Visualization
 - ipywidgets: Interactive UI
 - jupyter: Notebook environment
+- pytest: Testing framework (dev dependency)
+
+## Testing
+
+Run the comprehensive test suite:
+
+```bash
+# Run all tests
+pytest
+
+# Run with coverage report
+pytest --cov=strategies --cov-report=html
+
+# Run specific test file
+pytest tests/test_buy_once.py
+
+# Run with verbose output
+pytest -v
+```
+
+To install dev dependencies including pytest:
+
+```bash
+pip install -e ".[dev]"
+```
